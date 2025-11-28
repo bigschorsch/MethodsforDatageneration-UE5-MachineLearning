@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
@@ -69,38 +71,39 @@ def encode_glucose_in_scatterplot(reduced_x, cluster_labels, df, method_name, sa
     if glucose_col not in df.columns:
         raise ValueError(f"Column '{glucose_col}' not found in dataframe.")
 
-    glucose_values = df[glucose_col]
+    glucose_values = df[glucose_col].fillna(df[glucose_col].median())
 
-    glucose_values = glucose_values.fillna(glucose_values.median())
+    g_min, g_max = glucose_values.min(), glucose_values.max()
+    glucose_alpha = 0.2 + 0.8 * (glucose_values - g_min) / (g_max - g_min)
 
-    plt.figure(figsize=(7, 6))
-    scatter = plt.scatter(
-        reduced_x[:, 0],
-        reduced_x[:, 1],
-        c=glucose_values,
-        cmap="viridis",
-        alpha=0.85,
-        s=40,
-        edgecolor="none"
-    )
+    cmap = plt.cm.get_cmap("viridis", len(np.unique(cluster_labels)))
 
-    plt.title(f"{method_name} + Clusters + Glucose Encoding")
-    plt.xlabel("Component 1")
-    plt.ylabel("Component 2")
+    fig, ax = plt.subplots(figsize=(7, 6))
 
     for cluster_id in np.unique(cluster_labels):
-        cluster_points = reduced_x[cluster_labels == cluster_id]
-        plt.scatter(
-            cluster_points[:, 0],
-            cluster_points[:, 1],
+        idx = np.where(cluster_labels == cluster_id)[0]
+
+        ax.scatter(
+            reduced_x[idx, 0],
+            reduced_x[idx, 1],
+            c=[cmap(cluster_id)],
+            alpha=glucose_alpha.iloc[idx],
+            s=45,
             edgecolor="black",
-            facecolor="none",
-            s=70,
-            linewidths=0.3
+            linewidths=0.3,
+            label=f"Cluster {cluster_id}"
         )
 
-    cbar = plt.colorbar(scatter)
-    cbar.set_label("Glucose level")
+    ax.set_title(f"{method_name} + Clusters (color) + Glucose (opacity)")
+    ax.set_xlabel("Component 1")
+    ax.set_ylabel("Component 2")
+    ax.legend(title="Cluster", fontsize=8)
+
+    norm = Normalize(vmin=g_min, vmax=g_max)
+    sm = ScalarMappable(cmap=plt.cm.Greys, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label("Glucose level (mapped to opacity)")
 
     plt.tight_layout()
     plt.savefig(save_path)
