@@ -10,7 +10,7 @@ analyze_data(cleaned_df)
 
 ## Exercise c)
 x_scaled = prepare_data(cleaned_df)
-# eval_different_clustering(x_scaled)
+eval_different_clustering(x_scaled)
 
 # best clustering method is kmeans with k = 2
 best_k = 2
